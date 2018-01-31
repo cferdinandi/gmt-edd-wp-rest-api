@@ -15,7 +15,7 @@ You'll need to configure an options menu to get the domain, username, and passwo
 
 ```php
 wp_remote_request(
-	rtrim($options['wp_api_url'], '/') . '/wp-json/gmt-edd-for-courses/v1/users/' . $email,
+	rtrim($options['wp_api_url'], '/') . '/wp-json/gmt-edd/v1/users/' . $email,
 	array(
 		'method'    => 'GET',
 		'headers'   => array(
