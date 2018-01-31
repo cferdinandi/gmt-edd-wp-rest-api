@@ -1,2 +1,2 @@
-# GMT Articles
-Adds an Articles custom post type to Go Make Things. [http://gomakethings.com](http://gomakethings.com)
+# GMT EDD WP Rest API
+Add WP Rest API hooks into Easy Digital Downloads.
