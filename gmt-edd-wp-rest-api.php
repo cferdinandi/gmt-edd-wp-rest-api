@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 0.0.2
+ * Version: 0.1.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -18,16 +18,33 @@
 			return new WP_Error( 'code', __( 'Not a valid email address', 'edd_for_courses' ) );
 		}
 
-		// Get purchases
-		$purchases = edd_get_users_purchased_products($data['email']);
+		// Get user purchases
+		$purchases = edd_get_users_purchases($data['email']);
+
+		// Set up list of purchases
 		$purchase_list = array();
+
 		foreach ($purchases as $purchase) {
-			if (edd_is_bundled_product($purchase->ID)) {
-				foreach (edd_get_bundled_products($purchase->ID) as $bundle) {
-					$purchase_list[] = array_shift(explode('_', $bundle));
+			$payment = new EDD_Payment( $purchase->ID );
+			$purchased_files = $payment->cart_details;
+
+			if ( is_array( $purchased_files ) ) {
+				foreach ( $purchased_files as $download ) {
+					if ( edd_is_bundled_product( $download['id'] ) ) {
+						foreach ( edd_get_bundled_products( $download['id'] ) as $bundle ) {
+							$purchase_list[] = $bundle;
+						}
+					} else {
+						$variable_prices = edd_has_variable_prices( $download['id'] );
+						if ( $variable_prices && isset( $download['item_number']['options']['price_id'] ) ) {
+							$purchase_list[] = $download['id'] . '_' . $download['item_number']['options']['price_id'];
+						} else {
+							$purchase_list[] = $download['id'];
+						}
+					}
+
+
 				}
-			} else {
-				$purchase_list[] = $purchase->ID;
 			}
 		}
 
@@ -40,7 +57,7 @@
 	function gmt_edd_for_courses_register_routes () {
 		register_rest_route('gmt-edd/v1', '/users/(?P<email>\S+)', array(
 			'methods' => 'GET',
-			'callback' => 'gmt_edd_get_user_purchases',
+			'callback' => 'gmt_edd_get_user_purchases2',
 			'permission_callback' => function () {
 				return current_user_can( 'edit_theme_options' );
 			},
