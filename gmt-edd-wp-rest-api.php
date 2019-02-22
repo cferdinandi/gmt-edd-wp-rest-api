@@ -5,16 +5,13 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 0.2.3
+ * Version: 0.2.4
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
  */
 
 	function gmt_edd_get_user_purchases($data) {
-
-		// @todo add API secret validation
-		// $api_key = edd_get_option( 'gmt_edd_for_courses_api_secret', false );
 
 		// if no email, throw an error
 		if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
@@ -73,36 +70,3 @@
 		));
 	}
 	add_action('rest_api_init', 'gmt_edd_for_courses_register_routes');
-
-
-	/**
-	 * Add settings section
-	 * @param array $sections The current sections
-	 */
-	function gmt_edd_for_courses_settings_section( $sections ) {
-		$sections['gmt_edd_for_courses'] = __( 'EDD for Courses', 'edd_for_courses' );
-		return $sections;
-	}
-	add_filter( 'edd_settings_sections_extensions', 'gmt_edd_for_courses_settings_section' );
-
-
-	/**
-	 * Add settings
-	 * @param  array $settings The existing settings
-	 */
-	function gmt_edd_for_courses_settings( $settings ) {
-		$course_settings = array(
-			array(
-				'id'      => 'gmt_edd_for_courses_api_secret',
-				'name'    => __( 'API Secret', 'edd_for_courses' ),
-				'desc'    => __( 'A secret key to use for authentication', 'edd_for_courses' ),
-				'type'    => 'text',
-				'size'    => 'regular',
-			),
-		);
-		if ( version_compare( EDD_VERSION, 2.5, '>=' ) ) {
-			$course_settings = array( 'gmt_edd_for_courses' => $course_settings );
-		}
-		return array_merge( $settings, $course_settings );
-	}
-	add_filter( 'edd_settings_extensions', 'gmt_edd_for_courses_settings', 999, 1 );
