@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 0.2.4
+ * Version: 0.3.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -23,13 +23,19 @@
 
 		// Set up list of purchases
 		$purchase_list = array();
+		$invoice_list = array();
 
 		foreach ($purchases as $purchase) {
 			$payment = new EDD_Payment( $purchase->ID );
 			$purchased_files = $payment->cart_details;
 
 			if ( is_array( $purchased_files ) ) {
+
+				$products = array();
+
 				foreach ( $purchased_files as $download ) {
+
+					// Get product IDs
 					if ( edd_is_bundled_product( $download['id'] ) ) {
 						$price_id = isset( $download['item_number']['options']['price_id'] ) ? $download['item_number']['options']['price_id'] : null;
 						foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $bundle ) {
@@ -44,13 +50,32 @@
 						}
 					}
 
+					// Get products
+					$products[] = array(
+						'name' => $download['name'],
+						'price' => $download['item_price'],
+						'discount' => $download['discount'],
+						'total' => $download['price']
+					);
 
 				}
+
+				$invoice_list[] = array(
+					'id' => $purchase->ID,
+					'date' => get_the_date('F n, Y', $purchase->ID),
+					'total' => $payment->total,
+					'products' => $products
+				);
+
+
 			}
 		}
 
 		// Return success
-		return new WP_REST_Response(array_unique($purchase_list), 200);
+		return new WP_REST_Response(array(
+			'purchases' => array_unique($purchase_list),
+			'invoices' => $invoice_list
+		), 200);
 
 	}
 
