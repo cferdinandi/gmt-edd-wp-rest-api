@@ -101,7 +101,7 @@
 			),
 		);
 		if ( version_compare( EDD_VERSION, 2.5, '>=' ) ) {
-			$course_settings = array( 'gmt_edd_for_courses' => $mailchimp_settings );
+			$course_settings = array( 'gmt_edd_for_courses' => $course_settings );
 		}
 		return array_merge( $settings, $course_settings );
 	}
