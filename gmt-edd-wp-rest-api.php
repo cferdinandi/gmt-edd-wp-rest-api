@@ -5,63 +5,11 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.1.1
+ * Version: 1.2.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
  */
-
-	function gmt_edd_get_user_subscriptions($request) {
-
-		// Get request parameters
-		$params = $request->get_params();
-
-		// if no email, throw an error
-		if (empty($params['email']) || !filter_var($params['email'], FILTER_VALIDATE_EMAIL)) {
-			return new WP_Error( 'code', __( 'Not a valid email address', 'edd_for_courses' ) );
-		}
-
-		// If no product ID, throw an error
-		if (empty($params['id'])) {
-			return new WP_Error( 'code', __( 'Missing product ID', 'edd_for_courses' ) );
-		}
-
-		// Get subscription
-		$subscriber = new EDD_Recurring_Subscriber(sanitize_email($params['email']));
-		$subscription = $subscriber->get_subscriptions(wp_filter_nohtml_kses($params['id']));
-
-		// If there's no subscription
-		if (empty($subscription)) {
-			return new WP_REST_Response(array(
-				'status' => 'no_subscriptions'
-			), 200);
-		}
-
-		// Get subscription details
-		$subscription_payments = $subscription[0]->get_child_payments();
-		$response = array(
-			'status' => $subscription[0]->status,
-			'amount' => $subscription[0]->recurring_amount,
-			'created' => date('F j, Y', strtotime( $subscription[0]->created )),
-			'expires' => date('F j, Y', strtotime( $subscription[0]->expiration )),
-			'gateway' => $subscription[0]->gateway,
-			'payments' => array(),
-		);
-
-		// Create payments array
-		foreach ( $subscription_payments as $payment ) {
-			$response['payments'][] = array(
-				'id'     => $payment->ID,
-				'amount' => $payment->total,
-				'date'   => date('F j, Y', strtotime( $payment->date )),
-				'status' => $payment->status_nicename,
-			);
-		}
-
-		// Return success
-		return new WP_REST_Response($response, 200);
-
-	}
 
 	function gmt_edd_get_user_purchases($data) {
 
@@ -152,14 +100,6 @@
 					'type' => 'string',
 				),
 			),
-		));
-
-		register_rest_route('gmt-edd/v1', '/subscriptions', array(
-			'methods' => 'GET',
-			'callback' => 'gmt_edd_get_user_subscriptions',
-			'permission_callback' => function () {
-				return current_user_can( 'edit_theme_options' );
-			},
 		));
 
 	}
