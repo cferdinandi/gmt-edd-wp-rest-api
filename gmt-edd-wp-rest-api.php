@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.2.1
+ * Version: 1.2.2
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -24,7 +24,6 @@
 		// Set up list of purchases
 		$purchase_list = array();
 		$invoice_list = array();
-		$subscriptions_list = array();
 
 		foreach ($purchases as $purchase) {
 			$payment = new EDD_Payment( $purchase->ID );
@@ -75,7 +74,6 @@
 		return new WP_REST_Response(array(
 			'purchases' => array_unique($purchase_list),
 			'invoices' => $invoice_list,
-			'subscriptions' => array_unique($subscriptions_list),
 		), 200);
 
 	}
