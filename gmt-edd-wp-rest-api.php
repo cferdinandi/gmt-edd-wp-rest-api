@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.2.2
+ * Version: 1.2.3
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -37,7 +37,7 @@
 
 					// Get product IDs
 					if ( edd_is_bundled_product( $download['id'] ) ) {
-						$price_id = isset( $download['item_number']['options']['price_id'] ) ? $download['item_number']['options']['price_id'] : null;
+						$price_id = isset( $download['item_number']['options']['price_id'] ) ? strval($download['item_number']['options']['price_id']) : null;
 						foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $bundle ) {
 							$purchase_list[] = $bundle;
 						}
@@ -46,7 +46,7 @@
 						if ( $variable_prices && isset( $download['item_number']['options']['price_id'] ) ) {
 							$purchase_list[] = $download['id'] . '_' . $download['item_number']['options']['price_id'];
 						} else {
-							$purchase_list[] = $download['id'];
+							$purchase_list[] = strval($download['id']);
 						}
 					}
 
