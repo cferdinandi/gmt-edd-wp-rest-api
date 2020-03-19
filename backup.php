@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.3.0
+ * Version: 1.2.3
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -79,76 +79,6 @@
 	}
 
 
-	function gmt_edd_get_sales ($request) {
-
-		// Get request parameters
-		$params = $request->get_params();
-		$origins = getenv('EDD_ORIGINS');
-		$categories = getenv('EDD_CATEGORIES');
-		$key = getenv('EDD_KEY');
-		$secret = getenv('EDD_SECRET');
-
-		// Check domain whitelist
-		if (!empty($origins)) {
-			$origin = $request->get_header('origin');
-			if (empty($origin) || !in_array($origin, explode(',', $origins))) {
-				return new WP_REST_Response(array(
-					'code' => 400,
-					'status' => 'disallowed_domain',
-					'message' => 'This domain is not whitelisted.'
-				), 400);
-			}
-		}
-
-		// Check allowed categories
-		if (!empty($categories)) {
-			if (empty($params['category']) || !in_array($params['category'], explode(',', $categories))) {
-				return new WP_REST_Response(array(
-					'code' => 400,
-					'status' => 'disallowed_category',
-					'message' => 'This category is not allowed.'
-				), 400);
-			}
-		}
-
-		// Check key/secret
-		if ( !empty($key) && !empty($secret) && (!isset($params[$key]) || empty($params[$key]) || $params[$key] !== $secret) ) {
-			return new WP_REST_Response(array(
-				'code' => 400,
-				'status' => 'failed',
-				'message' => 'Unable to get data. Please try again.'
-			), 400);
-		}
-
-		// Get downloads from the category
-		$downloads = get_posts(array(
-			'post_type'      => 'download',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
-			'tax_query'      => array(
-				array(
-					'taxonomy' => 'download_category',
-					'field'    => 'slug',
-					'terms'    => $params['category'],
-				),
-			),
-		));
-
-		// Count total number of sales
-		$sales = 0;
-		foreach ( $downloads as $download ) {
-			$sales += EDD()->payment_stats->get_sales( $download, $params['start'] ? $params['start'] : 'this_month', $params['end'] ? $params['end'] : 'this_month' );
-		}
-
-		return new WP_REST_Response(array(
-			'code' => 200,
-			'status' => 'success',
-			'message' => edd_format_amount( $sales, false ),
-		), 200);
-
-	}
-
-
 	function gmt_edd_for_courses_register_routes () {
 
 		register_rest_route('gmt-edd/v1', '/users/(?P<email>\S+)', array(
@@ -162,11 +92,6 @@
 					'type' => 'string',
 				),
 			),
-		));
-
-		register_rest_route('gmt-edd/v1', '/sales', array(
-			'methods' => 'GET',
-			'callback' => 'gmt_edd_get_sales'
 		));
 
 	}

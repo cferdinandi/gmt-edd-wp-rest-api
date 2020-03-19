@@ -1,5 +1,5 @@
 # GMT EDD WP Rest API
-Add WP Rest API hooks into Easy Digital Downloads to get products and subscription data.
+Add WP Rest API hooks into Easy Digital Downloads to get product data.
 
 ## How to use it
 
@@ -9,8 +9,8 @@ Add WP Rest API hooks into Easy Digital Downloads to get products and subscripti
 # Get purchase details for a user
 /wp-json/gmt-edd/v1/users/<user_email_address>
 
-# Get subscription details for a user and product
-/wp-json/gmt-edd/v1/subscriptions?email=<user_email_address>&id=<product_id>
+# Get sales data for a category of products
+/wp-json/gmt-edd/v1/sales?category=<category_id>&start=<start_date>&end=<end_date>&<key>=<secret>
 ```
 
 ### Making a request with WordPress
@@ -40,3 +40,14 @@ wp_remote_request(
 	)
 );
 ```
+
+### Environment variables
+
+The `/sales` endpoint can be configured and customized using environment variables.
+
+| Variable         | Definition                                               |
+|------------------|----------------------------------------------------------|
+| `EDD_ORIGINS`    | Restrict API calls to specific domains (comma-separated) |
+| `EDD_CATEGORIES` | Restrict data to specific categories (comma-separated)   |
+| `EDD_KEY`        | A key you can use for added authentication [optional]    |
+| `EDD_SECRET`     | A secret you can use for added authentication [optional] |
