@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -79,6 +79,20 @@
 	}
 
 
+	/**
+	 * Round a number down to nearest value (10, 100, etc)
+	 * @param  Integer $num       The number to round
+	 * @param  Integer $precision The precision to round by
+	 * @return Integer            The rounded number
+	 */
+	function gmt_edd_round($num, $precision) {
+		$num = intval($num);
+		if (empty($precision)) return $num;
+		$precision = intval($precision);
+		return number_format(floor($num / $precision) * $precision);
+	}
+
+
 	function gmt_edd_get_sales ($request) {
 
 		// Get request parameters
@@ -143,7 +157,7 @@
 		return new WP_REST_Response(array(
 			'code' => 200,
 			'status' => 'success',
-			'message' => edd_format_amount( $sales, false ),
+			'message' => empty($params['round']) ? edd_format_amount( $sales, false ) : edd_format_amount( gmt_edd_round($sales, $params['round']), false ),
 		), 200);
 
 	}
