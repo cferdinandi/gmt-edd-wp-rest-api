@@ -5,12 +5,40 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
  */
 
+	/**
+	 * Get a user's subscription data
+	 * @param  String $email The user email address
+	 * @return Object        The subscription data
+	 */
+	function gmt_edd_get_users_subscriptions ($email) {
+
+		// Make sure there's an email address
+		if (empty($email)) return;
+
+		// Make sure there's a subscriber class
+		if (!class_exists('EDD_Recurring_Subscriber')) return;
+
+		// Get the subscriber
+		$subscriber = new EDD_Recurring_Subscriber($email);
+		if (empty($subscriber)) return;
+
+		// Get subscriptions
+		$subscriptions = $subscriber->get_subscriptions();
+		return $subscriptions;
+
+	}
+
+	/**
+	 * Get user purchase data
+	 * @param  Object $request The request object
+	 * @return JSON            The REST API Response
+	 */
 	function gmt_edd_get_user_purchases($data) {
 
 		// if no email, throw an error
@@ -19,12 +47,16 @@
 		}
 
 		// Get user purchases
-		$purchases = edd_get_users_purchases(sanitize_email($data['email']));
+		$email = sanitize_email($data['email']);
+		$purchases = edd_get_users_purchases($email);
+		$subscriptions = gmt_edd_get_users_subscriptions($email);
 
 		// Set up list of purchases
 		$purchase_list = array();
 		$invoice_list = array();
+		$subscription_list = array();
 
+		// Loop through purchases
 		foreach ($purchases as $purchase) {
 			$payment = new EDD_Payment( $purchase->ID );
 			$purchased_files = $payment->cart_details;
@@ -38,7 +70,7 @@
 					// Get product IDs
 					if ( edd_is_bundled_product( $download['id'] ) ) {
 						$price_id = isset( $download['item_number']['options']['price_id'] ) ? strval($download['item_number']['options']['price_id']) : null;
-						foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $bundle ) {
+						foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $key => $bundle ) {
 							$purchase_list[] = $bundle;
 						}
 					} else {
@@ -70,10 +102,23 @@
 			}
 		}
 
+		// Loop through subscriptions
+		foreach ($subscriptions as $subscription) {
+			$subscription_list[] = array(
+				'amount' => $subscription->recurring_amount,
+				'period' => $subscription->period,
+				'status' => $subscription->status,
+				'id' => $subscription->id,
+				'product_id' => $subscription->product_id,
+				'price_id' => $subscription->price_id,
+			);
+		}
+
 		// Return success
 		return new WP_REST_Response(array(
 			'purchases' => array_unique($purchase_list),
 			'invoices' => $invoice_list,
+			'subscriptions' => $subscription_list,
 		), 200);
 
 	}
@@ -93,6 +138,11 @@
 	}
 
 
+	/**
+	 * Get the number of sales for a product
+	 * @param  Object $request The request object
+	 * @return JSON            The REST API Response
+	 */
 	function gmt_edd_get_sales ($request) {
 
 		// Get request parameters
