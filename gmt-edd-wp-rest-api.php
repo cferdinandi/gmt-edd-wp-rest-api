@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.5.2
+ * Version: 1.5.3
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -68,17 +68,34 @@
 				foreach ( $purchased_files as $download ) {
 
 					// Get product IDs
+					// if ( edd_is_bundled_product( $download['id'] ) ) {
+					// 	$price_id = isset( $download['item_number']['options']['price_id'] ) ? strval($download['item_number']['options']['price_id']) : null;
+					// 	foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $key => $bundle ) {
+					// 		$purchase_list[] = $bundle;
+					// 	}
+					// } else {
+					// 	$variable_prices = edd_has_variable_prices( $download['id'] );
+					// 	if ( $variable_prices && isset( $download['item_number']['options']['price_id'] ) ) {
+					// 		$purchase_list[] = $download['id'] . '_' . $download['item_number']['options']['price_id'];
+					// 	} else {
+					// 		$purchase_list[] = strval($download['id']);
+					// 	}
+					// }
+
+					// Get price_id
+					$price_id = isset($download['item_number']['options']['price_id']) ? strval($download['item_number']['options']['price_id']) : null;
+
+					// Add ID to list (with price ID if they exist)
+					if ( edd_has_variable_prices( $download['id'] ) && !empty($price_id) ) {
+						$purchase_list[] = $download['id'] . '_' . $price_id;
+					} else {
+						$purchase_list[] = strval($download['id']);
+					}
+
+					// If contains bundled products, add them
 					if ( edd_is_bundled_product( $download['id'] ) ) {
-						$price_id = isset( $download['item_number']['options']['price_id'] ) ? strval($download['item_number']['options']['price_id']) : null;
 						foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $key => $bundle ) {
 							$purchase_list[] = $bundle;
-						}
-					} else {
-						$variable_prices = edd_has_variable_prices( $download['id'] );
-						if ( $variable_prices && isset( $download['item_number']['options']['price_id'] ) ) {
-							$purchase_list[] = $download['id'] . '_' . $download['item_number']['options']['price_id'];
-						} else {
-							$purchase_list[] = strval($download['id']);
 						}
 					}
 
@@ -103,24 +120,24 @@
 		}
 
 		// Loop through subscriptions
-		foreach ($subscriptions as $subscription) {
-			$product = new EDD_Download($subscription->product_id);
-			$subscription_list[] = array(
-				'amount' => $subscription->recurring_amount,
-				'period' => $subscription->period,
-				'status' => $subscription->status,
-				'id' => $subscription->id,
-				'product_id' => $subscription->product_id,
-				'product' => empty($product) ? '' : $product->post_title,
-				'price_id' => $subscription->price_id,
-			);
-		}
+		// foreach ($subscriptions as $subscription) {
+		// 	$product = new EDD_Download($subscription->product_id);
+		// 	$subscription_list[] = array(
+		// 		'amount' => $subscription->recurring_amount,
+		// 		'period' => $subscription->period,
+		// 		'status' => $subscription->status,
+		// 		'id' => $subscription->id,
+		// 		'product_id' => $subscription->product_id,
+		// 		'product' => empty($product) ? '' : $product->post_title,
+		// 		'price_id' => $subscription->price_id,
+		// 	);
+		// }
 
 		// Return success
 		return new WP_REST_Response(array(
 			'purchases' => array_unique($purchase_list),
 			'invoices' => $invoice_list,
-			'subscriptions' => $subscription_list,
+			// 'subscriptions' => $subscription_list,
 		), 200);
 
 	}
