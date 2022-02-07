@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.5.4
+ * Version: 1.6.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -37,6 +37,14 @@
 
 		// Get subscriptions
 		$subscriptions = $subscriber->get_subscriptions();
+
+		// Add missing data to subscriptions
+		foreach ($subscriptions as $index => $subscription) {
+			$subscription_data = new EDD_Subscription($subscription->id);
+			$product_data = new EDD_Download($subscription->product_id);
+			$subscription->times_billed = $subscription_data->get_times_billed();
+			$subscription->product = $product_data->post_title;
+		}
 
 		// Return success
 		return new WP_REST_Response($subscriptions, 200);
