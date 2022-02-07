@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.5.3
+ * Version: 1.5.4
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -16,45 +16,53 @@
 	 * @param  String $email The user email address
 	 * @return Object        The subscription data
 	 */
-	function gmt_edd_get_users_subscriptions ($email) {
+	function gmt_edd_get_user_subscriptions ($data) {
 
-		// Make sure there's an email address
-		if (empty($email)) return;
+		// if no email, throw an error
+		if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+			return new WP_Error( 400, __( 'Not a valid email address', 'edd_for_courses' ) );
+		}
 
 		// Make sure there's a subscriber class
-		if (!class_exists('EDD_Recurring_Subscriber')) return array();
+		if (!class_exists('EDD_Recurring_Subscriber')) {
+			return new WP_Error( 500, __( 'Subscriptions not enabled.', 'edd_for_courses' ) );
+		}
 
 		// Get the subscriber
+		$email = sanitize_email($data['email']);
 		$subscriber = new EDD_Recurring_Subscriber($email);
-		if (empty($subscriber)) return array();
+		if (empty($subscriber)) {
+			return new WP_Error( 400, __( 'Subscriber not found.', 'edd_for_courses' ) );
+		}
 
 		// Get subscriptions
 		$subscriptions = $subscriber->get_subscriptions();
-		return $subscriptions;
+
+		// Return success
+		return new WP_REST_Response($subscriptions, 200);
 
 	}
+
 
 	/**
 	 * Get user purchase data
 	 * @param  Object $request The request object
 	 * @return JSON            The REST API Response
 	 */
-	function gmt_edd_get_user_purchases($data) {
+	function gmt_edd_get_user_purchases ($data) {
 
 		// if no email, throw an error
 		if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-			return new WP_Error( 'code', __( 'Not a valid email address', 'edd_for_courses' ) );
+			return new WP_Error( 400, __( 'Not a valid email address', 'edd_for_courses' ) );
 		}
 
 		// Get user purchases
 		$email = sanitize_email($data['email']);
 		$purchases = edd_get_users_purchases($email);
-		$subscriptions = gmt_edd_get_users_subscriptions($email);
 
 		// Set up list of purchases
 		$purchase_list = array();
 		$invoice_list = array();
-		$subscription_list = array();
 
 		// Loop through purchases
 		foreach ($purchases as $purchase) {
@@ -66,21 +74,6 @@
 				$products = array();
 
 				foreach ( $purchased_files as $download ) {
-
-					// Get product IDs
-					// if ( edd_is_bundled_product( $download['id'] ) ) {
-					// 	$price_id = isset( $download['item_number']['options']['price_id'] ) ? strval($download['item_number']['options']['price_id']) : null;
-					// 	foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $key => $bundle ) {
-					// 		$purchase_list[] = $bundle;
-					// 	}
-					// } else {
-					// 	$variable_prices = edd_has_variable_prices( $download['id'] );
-					// 	if ( $variable_prices && isset( $download['item_number']['options']['price_id'] ) ) {
-					// 		$purchase_list[] = $download['id'] . '_' . $download['item_number']['options']['price_id'];
-					// 	} else {
-					// 		$purchase_list[] = strval($download['id']);
-					// 	}
-					// }
 
 					// Get price_id
 					$price_id = isset($download['item_number']['options']['price_id']) ? strval($download['item_number']['options']['price_id']) : null;
@@ -113,31 +106,16 @@
 					'id' => $purchase->ID,
 					'date' => get_the_date('F j, Y', $purchase->ID),
 					'total' => $payment->total,
-					'products' => $products
+					'products' => $products,
 				);
 
 			}
 		}
 
-		// Loop through subscriptions
-		// foreach ($subscriptions as $subscription) {
-		// 	$product = new EDD_Download($subscription->product_id);
-		// 	$subscription_list[] = array(
-		// 		'amount' => $subscription->recurring_amount,
-		// 		'period' => $subscription->period,
-		// 		'status' => $subscription->status,
-		// 		'id' => $subscription->id,
-		// 		'product_id' => $subscription->product_id,
-		// 		'product' => empty($product) ? '' : $product->post_title,
-		// 		'price_id' => $subscription->price_id,
-		// 	);
-		// }
-
 		// Return success
 		return new WP_REST_Response(array(
 			'purchases' => array_unique($purchase_list),
 			'invoices' => $invoice_list,
-			// 'subscriptions' => $subscription_list,
 		), 200);
 
 	}
@@ -237,6 +215,19 @@
 		register_rest_route('gmt-edd/v1', '/users/(?P<email>\S+)', array(
 			'methods' => 'GET',
 			'callback' => 'gmt_edd_get_user_purchases',
+			'permission_callback' => function () {
+				return current_user_can( 'edit_theme_options' );
+			},
+			'args' => array(
+				'email' => array(
+					'type' => 'string',
+				),
+			),
+		));
+
+		register_rest_route('gmt-edd/v1', '/subscriptions/(?P<email>\S+)', array(
+			'methods' => 'GET',
+			'callback' => 'gmt_edd_get_user_subscriptions',
 			'permission_callback' => function () {
 				return current_user_can( 'edit_theme_options' );
 			},
