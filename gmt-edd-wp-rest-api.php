@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.6.0
+ * Version: 1.7.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -218,6 +218,73 @@
 	}
 
 
+	/**
+	 * Get the number of customers
+	 * @param  Object $request The request object
+	 * @return JSON            The REST API Response
+	 */
+	function gmt_edd_get_customers ($request) {
+
+		// Get request parameters
+		$params = $request->get_params();
+		$origins = getenv('EDD_ORIGINS');
+		$categories = getenv('EDD_CATEGORIES');
+		$key = getenv('EDD_KEY');
+		$secret = getenv('EDD_SECRET');
+
+		// Check domain whitelist
+		if (!empty($origins)) {
+			$origin = $request->get_header('origin');
+			if (empty($origin) || !in_array($origin, explode(',', $origins))) {
+				return new WP_REST_Response(array(
+					'code' => 400,
+					'status' => 'disallowed_domain',
+					'message' => 'This domain is not whitelisted.'
+				), 400);
+			}
+		}
+
+		// // Check allowed categories
+		// if (!empty($categories)) {
+		// 	if (empty($params['category']) || !in_array($params['category'], explode(',', $categories))) {
+		// 		return new WP_REST_Response(array(
+		// 			'code' => 400,
+		// 			'status' => 'disallowed_category',
+		// 			'message' => 'This category is not allowed.'
+		// 		), 400);
+		// 	}
+		// }
+
+		// Check key/secret
+		if ( !empty($key) && !empty($secret) && (!isset($params[$key]) || empty($params[$key]) || $params[$key] !== $secret) ) {
+			return new WP_REST_Response(array(
+				'code' => 400,
+				'status' => 'failed',
+				'message' => 'Unable to get data. Please try again.'
+			), 400);
+		}
+
+		// Get customers
+		$customers = new EDD_Customer_Query(array(
+			'number' => 0,
+		));
+
+		// Remove customers with no purchases
+		$total = 0;
+		foreach ($customers->items as $customer) {
+			if (intval($customer->purchase_count) < 1) continue;
+			$total++;
+		}
+
+		return new WP_REST_Response(array(
+			'code' => 200,
+			'status' => 'success',
+			'message' => empty($params['round']) ? $total : gmt_edd_round($total, $params['round']),
+		), 200);
+
+	}
+
+
 	function gmt_edd_for_courses_register_routes () {
 
 		register_rest_route('gmt-edd/v1', '/users/(?P<email>\S+)', array(
@@ -249,6 +316,11 @@
 		register_rest_route('gmt-edd/v1', '/sales', array(
 			'methods' => 'GET',
 			'callback' => 'gmt_edd_get_sales'
+		));
+
+		register_rest_route('gmt-edd/v1', '/customers', array(
+			'methods' => 'GET',
+			'callback' => 'gmt_edd_get_customers'
 		));
 
 	}
