@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 1.10.0
+ * Version: 2.0.0
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -103,17 +103,17 @@
 					// Get products
 					$products[] = array(
 						'name' => $download['name'],
-						'price' => $download['item_price'],
-						'discount' => $download['discount'],
-						'total' => $download['price']
+						'price' => floatval($download['item_price']),
+						'discount' => floatval($download['discount']),
+						'total' => floatval($download['price']),
 					);
 
 				}
 
 				$invoice_list[] = array(
 					'id' => $purchase->ID,
-					'date' => get_the_date('F j, Y', $purchase->ID),
-					'total' => $payment->total,
+					'date' => date_format(date_create($purchase->date), 'F j, Y'),
+					'total' => edd_format_amount($payment->total),
 					'products' => $products,
 				);
 
@@ -206,7 +206,7 @@
 		// Count total number of sales
 		$sales = 0;
 		foreach ( $downloads as $download ) {
-			$sales += EDD()->payment_stats->get_sales( $download, $params['start'] ? $params['start'] : 'this_month', $params['end'] ? $params['end'] : 'this_month' );
+			$sales += EDD()->payment_stats->get_sales( $download, !empty($params['start']) ? $params['start'] : 'this_month', !empty($params['end']) ? $params['end'] : 'this_month' );
 		}
 
 		return new WP_REST_Response(array(
