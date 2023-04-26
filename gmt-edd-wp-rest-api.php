@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 2.0.3
+ * Version: 2.0.4
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -216,10 +216,20 @@
 		));
 
 		// Count total number of sales
-		$sales = 0;
+		// $sales = 0;
+		$emails = array();
 		foreach ( $downloads as $download ) {
-			$sales += EDD()->payment_stats->get_sales( $download, !empty($params['start']) ? $params['start'] : 'this_month', !empty($params['end']) ? $params['end'] : 'this_month' );
+			// $sales += EDD()->payment_stats->get_sales( $download, !empty($params['start']) ? $params['start'] : 'this_month', !empty($params['end']) ? $params['end'] : 'this_month' );
+			$orders = edd_get_orders(array(
+				'product_id' => $download,
+				'number'     => 99999999,
+				'status'     => array('complete', 'renewal'),
+			));
+			foreach ($orders as $order) {
+				$emails[] = $order->email;
+			}
 		}
+		$sales = count(array_unique($emails));
 
 		return new WP_REST_Response(array(
 			'code' => 200,
