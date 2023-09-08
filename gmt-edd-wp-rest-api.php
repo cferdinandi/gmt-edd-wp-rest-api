@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 2.0.4
+ * Version: 2.0.5
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -51,6 +51,77 @@
 
 	}
 
+	function gmt_edd_get_customer_details ($email) {
+
+		$customer = new EDD_Customer( $email );
+		$purchases = $customer->get_payments();
+
+		// Set up list of purchases
+		$purchase_list = [];
+		$invoice_list = [];
+
+		// Loop through purchases
+		foreach ($purchases as $purchase) {
+
+			// Only get completed purchases
+			// @required after edd_get_users_purchases() stopped working
+			if ($purchase->status !== 'complete') continue;
+
+			// Get the user's purchases
+			$payment = new EDD_Payment( $purchase->ID );
+			$purchased_files = $payment->cart_details;
+
+			if ( is_array( $purchased_files ) ) {
+
+				$products = array();
+
+				foreach ( $purchased_files as $download ) {
+
+					// Get price_id
+					$price_id = isset($download['item_number']['options']['price_id']) ? strval($download['item_number']['options']['price_id']) : null;
+
+					// Add ID to list (with price ID if they exist)
+					if ( edd_has_variable_prices( $download['id'] ) && !empty($price_id) ) {
+						$purchase_list[] = $download['id'] . '_' . $price_id;
+					} else {
+						$purchase_list[] = strval($download['id']);
+					}
+
+					// If contains bundled products, add them
+					if ( edd_is_bundled_product( $download['id'] ) ) {
+						foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $key => $bundle ) {
+							$purchase_list[] = $bundle;
+						}
+					}
+
+					// Get products
+					$products[] = array(
+						'name' => str_replace(' - _', '', str_replace(' — _', '', $download['name'])),
+						'price' => floatval($download['item_price']),
+						'discount' => floatval($download['discount']),
+						'total' => floatval($download['price']),
+					);
+
+				}
+
+				$invoice_list[] = array(
+					'id' => $purchase->ID,
+					'date' => date_format(date_create($purchase->date), 'F j, Y'),
+					'total' => edd_format_amount($payment->total),
+					'products' => $products,
+				);
+
+			}
+		}
+
+		return [
+			'email' => $email,
+			'purchase_list' => $purchase_list,
+			'invoice_list' => $invoice_list,
+		];
+
+	}
+
 
 	/**
 	 * Get user purchase data
@@ -65,14 +136,14 @@
 		}
 
 		// Get user purchases
-		// @deprecated with EDD v3.x - breaking error for email updates
-		// $email = sanitize_email($data['email']);
-		// $purchases = edd_get_users_purchases($email);
+		$email = sanitize_email($data['email']);
+		$purchases = edd_get_users_purchases($email);
 
 		// Get user purchases
-		$email = sanitize_email($data['email']);
-		$customer = new EDD_Customer( $email );
-		$purchases = $customer->get_payments();
+		// @temp workaround for broken older approach
+		// $email = sanitize_email($data['email']);
+		// $customer = new EDD_Customer( $email );
+		// $purchases = $customer->get_payments();
 
 		// Set up list of purchases
 		$purchase_list = array();
@@ -240,73 +311,6 @@
 	}
 
 
-	/**
-	 * Get the number of customers
-	 * @param  Object $request The request object
-	 * @return JSON            The REST API Response
-	 */
-	function gmt_edd_get_customers ($request) {
-
-		// Get request parameters
-		$params = $request->get_params();
-		$origins = getenv('EDD_ORIGINS');
-		$categories = getenv('EDD_CATEGORIES');
-		$key = getenv('EDD_KEY');
-		$secret = getenv('EDD_SECRET');
-
-		// Check domain whitelist
-		if (!empty($origins)) {
-			$origin = $request->get_header('origin');
-			if (empty($origin) || !in_array($origin, explode(',', $origins))) {
-				return new WP_REST_Response(array(
-					'code' => 400,
-					'status' => 'disallowed_domain',
-					'message' => 'This domain is not whitelisted.'
-				), 400);
-			}
-		}
-
-		// // Check allowed categories
-		// if (!empty($categories)) {
-		// 	if (empty($params['category']) || !in_array($params['category'], explode(',', $categories))) {
-		// 		return new WP_REST_Response(array(
-		// 			'code' => 400,
-		// 			'status' => 'disallowed_category',
-		// 			'message' => 'This category is not allowed.'
-		// 		), 400);
-		// 	}
-		// }
-
-		// Check key/secret
-		if ( !empty($key) && !empty($secret) && (!isset($params[$key]) || empty($params[$key]) || $params[$key] !== $secret) ) {
-			return new WP_REST_Response(array(
-				'code' => 400,
-				'status' => 'failed',
-				'message' => 'Unable to get data. Please try again.'
-			), 400);
-		}
-
-		// Get customers
-		$customers = new EDD_Customer_Query(array(
-			'number' => 0,
-		));
-
-		// Remove customers with no purchases
-		$total = 0;
-		foreach ($customers->items as $customer) {
-			if (intval($customer->purchase_count) < 1) continue;
-			$total++;
-		}
-
-		return new WP_REST_Response(array(
-			'code' => 200,
-			'status' => 'success',
-			'message' => empty($params['round']) ? $total : gmt_edd_round($total, $params['round']),
-		), 200);
-
-	}
-
-
 	function gmt_edd_for_courses_register_routes () {
 
 		register_rest_route('gmt-edd/v1', '/users/(?P<email>\S+)', array(
@@ -338,11 +342,6 @@
 		register_rest_route('gmt-edd/v1', '/sales', array(
 			'methods' => 'GET',
 			'callback' => 'gmt_edd_get_sales'
-		));
-
-		register_rest_route('gmt-edd/v1', '/customers', array(
-			'methods' => 'GET',
-			'callback' => 'gmt_edd_get_customers'
 		));
 
 	}
