@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 2.0.5
+ * Version: 2.0.6
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -51,77 +51,6 @@
 
 	}
 
-	function gmt_edd_get_customer_details ($email) {
-
-		$customer = new EDD_Customer( $email );
-		$purchases = $customer->get_payments();
-
-		// Set up list of purchases
-		$purchase_list = [];
-		$invoice_list = [];
-
-		// Loop through purchases
-		foreach ($purchases as $purchase) {
-
-			// Only get completed purchases
-			// @required after edd_get_users_purchases() stopped working
-			if ($purchase->status !== 'complete') continue;
-
-			// Get the user's purchases
-			$payment = new EDD_Payment( $purchase->ID );
-			$purchased_files = $payment->cart_details;
-
-			if ( is_array( $purchased_files ) ) {
-
-				$products = array();
-
-				foreach ( $purchased_files as $download ) {
-
-					// Get price_id
-					$price_id = isset($download['item_number']['options']['price_id']) ? strval($download['item_number']['options']['price_id']) : null;
-
-					// Add ID to list (with price ID if they exist)
-					if ( edd_has_variable_prices( $download['id'] ) && !empty($price_id) ) {
-						$purchase_list[] = $download['id'] . '_' . $price_id;
-					} else {
-						$purchase_list[] = strval($download['id']);
-					}
-
-					// If contains bundled products, add them
-					if ( edd_is_bundled_product( $download['id'] ) ) {
-						foreach ( edd_get_bundled_products( $download['id'], $price_id ) as $key => $bundle ) {
-							$purchase_list[] = $bundle;
-						}
-					}
-
-					// Get products
-					$products[] = array(
-						'name' => str_replace(' - _', '', str_replace(' — _', '', $download['name'])),
-						'price' => floatval($download['item_price']),
-						'discount' => floatval($download['discount']),
-						'total' => floatval($download['price']),
-					);
-
-				}
-
-				$invoice_list[] = array(
-					'id' => $purchase->ID,
-					'date' => date_format(date_create($purchase->date), 'F j, Y'),
-					'total' => edd_format_amount($payment->total),
-					'products' => $products,
-				);
-
-			}
-		}
-
-		return [
-			'email' => $email,
-			'purchase_list' => $purchase_list,
-			'invoice_list' => $invoice_list,
-		];
-
-	}
-
 
 	/**
 	 * Get user purchase data
@@ -136,14 +65,14 @@
 		}
 
 		// Get user purchases
-		$email = sanitize_email($data['email']);
-		$purchases = edd_get_users_purchases($email);
+		// @deprecated with EDD v3.x - breaking error for email updates
+		// $email = sanitize_email($data['email']);
+		// $purchases = edd_get_users_purchases($email);
 
 		// Get user purchases
-		// @temp workaround for broken older approach
-		// $email = sanitize_email($data['email']);
-		// $customer = new EDD_Customer( $email );
-		// $purchases = $customer->get_payments();
+		$email = sanitize_email($data['email']);
+		$customer = new EDD_Customer( $email );
+		$purchases = $customer->get_orders(array('complete'));
 
 		// Set up list of purchases
 		$purchase_list = array();
@@ -154,7 +83,7 @@
 
 			// Only get completed purchases
 			// @required after edd_get_users_purchases() stopped working
-			if ($purchase->status !== 'complete') continue;
+			// if ($purchase->status !== 'complete') continue;
 
 			// Get the user's purchases
 			$payment = new EDD_Payment( $purchase->ID );
