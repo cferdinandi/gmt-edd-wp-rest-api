@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 2.1.0
+ * Version: 2.1.1
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -181,8 +181,10 @@
 			}
 		}
 
-		// Check allowed categories
+		// Check if category specified
 		$has_category = array_key_exists('category', $params);
+
+		// Check allowed categories
 		if ($has_category && !empty($categories)) {
 			if (empty($params['category']) || !in_array($params['category'], explode(',', $categories))) {
 				return new WP_REST_Response(array(
@@ -202,23 +204,47 @@
 			), 400);
 		}
 
+		// If no category, get all customers
+		if (!$has_category) {
+			$customers = edd_get_customers(array(
+				'number' => 9999999
+			));
+			$sales = 0;
+			foreach ($customers as $customer) {
+				if ($customer->purchase_count < 1) continue;
+				$sales++;
+			}
+			return new WP_REST_Response(array(
+				'code' => 200,
+				'status' => 'success',
+				'message' => empty($params['round']) ? edd_format_amount( $sales, false ) : edd_format_amount( gmt_edd_round($sales, $params['round']), false ),
+			), 200);
+		}
+
 		// Create download args
 		$args = array(
 			'post_type'      => 'download',
 			'posts_per_page' => -1,
 			'fields'         => 'ids',
-		);
-
-		// If there's a category, add it
-		if ($has_category) {
-			$args['tax_query'] = array(
+			'tax_query'      => array(
 				array(
 					'taxonomy' => 'download_category',
 					'field'    => 'slug',
 					'terms'    => $params['category'],
 				),
-			);
-		}
+			),
+		);
+
+		// // If there's a category, add it
+		// if ($has_category) {
+		// 	$args['tax_query'] = array(
+		// 		array(
+		// 			'taxonomy' => 'download_category',
+		// 			'field'    => 'slug',
+		// 			'terms'    => $params['category'],
+		// 		),
+		// 	);
+		// }
 
 		// Get downloads from the category
 		$downloads = get_posts($args);
