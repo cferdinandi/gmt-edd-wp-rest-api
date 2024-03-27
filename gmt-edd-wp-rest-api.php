@@ -66,13 +66,13 @@
 
 		// Get user purchases
 		// @deprecated with EDD v3.x - breaking error for email updates
-		// $email = sanitize_email($data['email']);
-		// $purchases = edd_get_users_purchases($email);
+		$email = sanitize_email($data['email']);
+		$purchases = edd_get_users_purchases($email);
 
 		// Get user purchases
-		$email = sanitize_email($data['email']);
-		$customer = new EDD_Customer( $email );
-		$purchases = $customer->get_orders(array('publish', 'complete', 'completed', 'partially_refunded', 'edd_subscription'));
+		// $email = sanitize_email($data['email']);
+		// $customer = new EDD_Customer( $email );
+		// $purchases = $customer->get_orders(array('publish', 'complete', 'completed', 'partially_refunded', 'edd_subscription'));
 
 		// Set up list of purchases
 		$purchase_list = array();
