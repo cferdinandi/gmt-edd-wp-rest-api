@@ -5,7 +5,7 @@
  * Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * GitHub Plugin URI: https://github.com/cferdinandi/gmt-edd-wp-rest-api/
  * Description: Add WP Rest API hooks into Easy Digital Downloads.
- * Version: 2.1.1
+ * Version: 2.1.2
  * Author: Chris Ferdinandi
  * Author URI: http://gomakethings.com
  * License: GPLv3
@@ -66,13 +66,24 @@
 
 		// Get user purchases
 		// @deprecated with EDD v3.x - breaking error for email updates
+		// $email = sanitize_email($data['email']);
+		// $purchases = edd_get_users_purchases($email);
+
+		// Get user
 		$email = sanitize_email($data['email']);
-		$purchases = edd_get_users_purchases($email);
+		$customer = new EDD_Customer( $email );
+
+		// If user doesn't exist
+		if (empty($customer->email)) {
+			return new WP_REST_Response(array(
+				'code' => 401,
+				'status' => 'invalid_user',
+				'message' => 'No purchases associated with this account.'
+			), 401);
+		}
 
 		// Get user purchases
-		// $email = sanitize_email($data['email']);
-		// $customer = new EDD_Customer( $email );
-		// $purchases = $customer->get_orders(array('publish', 'complete', 'completed', 'partially_refunded', 'edd_subscription'));
+		$purchases = $customer->get_orders(array('publish', 'complete', 'completed', 'partially_refunded', 'edd_subscription'));
 
 		// Set up list of purchases
 		$purchase_list = array();
